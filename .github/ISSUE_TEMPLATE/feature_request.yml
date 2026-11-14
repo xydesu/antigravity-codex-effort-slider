@@ -1,0 +1,17 @@
+name: 功能建議
+description: 提出新功能、交互優化或模型支援需求
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 需求說明
+      description: 請說明想新增或改進的行為與使用情境。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 替代方案或參考設計（選填）
+      description: 是否有參考介面或既有的設定選項建議？

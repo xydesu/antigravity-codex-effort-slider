@@ -1,5 +1,8 @@
 # Antigravity Codex Effort Slider
 
+[![CI](https://github.com/xydesu/antigravity-codex-effort-slider/actions/workflows/ci.yml/badge.svg)](https://github.com/xydesu/antigravity-codex-effort-slider/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 為 Antigravity Desktop 模型選擇器提供 Codex 風格的 **Reasoning Effort** 連續滑桿與雙層模型選單，透過 Antigravity 原生 **Sidecar + CDP** 外掛架構運作。
 
 ## 功能特色
@@ -20,7 +23,7 @@
 1. 取得專案並安裝外掛至 `~/.gemini/config/plugins/codex-effort-slider`：
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/xydesu/antigravity-codex-effort-slider.git
 cd antigravity-codex-effort-slider
 npm run install:plugin
 ```

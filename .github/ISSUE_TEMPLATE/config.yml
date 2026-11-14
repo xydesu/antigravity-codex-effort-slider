@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全性問題回報
+    url: https://github.com/xydesu/antigravity-codex-effort-slider/security/advisories/new
+    about: 若發現安全漏洞請透過私密 Advisory 回報，勿公開張貼於 Issue

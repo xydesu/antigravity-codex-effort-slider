@@ -4,6 +4,14 @@
   "private": false,
   "description": "Codex-style Reasoning Effort slider with right-side Layer-2 Select Model submenu for Antigravity Desktop, delivered via a native Sidecar + CDP hot-injection plugin.",
   "license": "MIT",
+  "homepage": "https://github.com/xydesu/antigravity-codex-effort-slider#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xydesu/antigravity-codex-effort-slider.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xydesu/antigravity-codex-effort-slider/issues"
+  },
   "engines": {
     "node": ">=20.0.0"
   },
