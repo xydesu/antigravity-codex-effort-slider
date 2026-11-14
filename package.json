@@ -1,0 +1,27 @@
+{
+  "name": "antigravity-codex-effort-slider",
+  "version": "2.0.0",
+  "private": false,
+  "description": "Codex-style Reasoning Effort slider with right-side Layer-2 Select Model submenu for Antigravity Desktop, delivered via a native Sidecar + CDP hot-injection plugin.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "test": "node test/slider.test.mjs && node test/cdp-bridge.test.mjs && node test/plugin.test.mjs",
+    "test:slider": "node test/slider.test.mjs",
+    "test:cdp": "node test/cdp-bridge.test.mjs",
+    "test:plugin": "node test/plugin.test.mjs",
+    "sync": "node scripts/sync-plugin.mjs",
+    "check": "node --check src/antigravity-effort-slider.js && node scripts/sync-plugin.mjs --check",
+    "install:plugin": "node scripts/install-plugin.mjs"
+  },
+  "keywords": [
+    "antigravity",
+    "codex",
+    "effort-slider",
+    "reasoning-effort",
+    "sidecar",
+    "cdp"
+  ]
+}

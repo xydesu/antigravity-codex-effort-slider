@@ -1,0 +1,18 @@
+{
+  "command": "node",
+  "args": ["main.mjs"],
+  "restart_policy": "always",
+  "display_name": "Codex Effort Slider",
+  "description": "經由本機 CDP 即時將 Codex 推理等級滑桿與右側第二層 Select Model 注入 Antigravity 主聊天視窗。",
+  "has_web_ui": true,
+  "ui_config": {
+    "display_name": "Codex Effort Slider",
+    "views": [
+      {
+        "path": "/",
+        "entrypoint": "SIDECAR_UI_ENTRYPOINT_AUX_PANE",
+        "title": "Codex Effort Slider"
+      }
+    ]
+  }
+}

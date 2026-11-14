@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Codex Effort Slider</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: var(--vscode-editor-background, #18181b);
+      --card: var(--vscode-sideBar-background, #202024);
+      --border: var(--vscode-panel-border, rgba(148, 163, 184, 0.22));
+      --fg: var(--vscode-foreground, #e4e4e7);
+      --muted: var(--vscode-descriptionForeground, #a1a1aa);
+      --accent: #7c3aed;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--warn);
+    }
+    .dot.ok { background: var(--ok); }
+    dl {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 8px 12px;
+      margin: 0;
+    }
+    dt { color: var(--muted); }
+    dd {
+      margin: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      word-break: break-all;
+    }
+    .actions {
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    button {
+      background: var(--accent);
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.6; cursor: default; }
+    .hint {
+      font-size: 11px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <h1>Codex Effort Slider</h1>
+      <span class="badge"><span id="dot" class="dot"></span><span id="state-text">載入中</span></span>
+    </div>
+    <dl>
+      <dt>橋接狀態</dt><dd id="reason">-</dd>
+      <dt>CDP 連接埠</dt><dd id="cdp-port">-</dd>
+      <dt>主視窗目標</dt><dd id="targets">-</dd>
+      <dt>Payload 版本</dt><dd id="version">-</dd>
+      <dt>最後同步</dt><dd id="sync-at">-</dd>
+    </dl>
+    <div class="actions">
+      <span class="hint">由本機 CDP 即時熱注入，無須修改 app.asar</span>
+      <button id="sync-btn" type="button">立即同步</button>
+    </div>
+  </div>
+  <script>
+    const els = {
+      dot: document.getElementById('dot'),
+      stateText: document.getElementById('state-text'),
+      reason: document.getElementById('reason'),
+      cdpPort: document.getElementById('cdp-port'),
+      targets: document.getElementById('targets'),
+      version: document.getElementById('version'),
+      syncAt: document.getElementById('sync-at'),
+      syncBtn: document.getElementById('sync-btn'),
+    };
+
+    function render(data) {
+      const alive = Number(data?.aliveCount || 0);
+      const targets = Number(data?.targetCount || 0);
+      const ok = Boolean(data?.running && alive > 0);
+      els.dot.classList.toggle('ok', ok);
+      els.stateText.textContent = ok ? '已注入' : (data?.running ? '等待視窗' : '未啟動');
+      els.reason.textContent = String(data?.lastReason || '-');
+      els.cdpPort.textContent = data?.cdpPort ? String(data.cdpPort) : '-';
+      els.targets.textContent = `${alive} / ${targets}`;
+      els.version.textContent = String(data?.bundleVersion || '-');
+      els.syncAt.textContent = data?.lastSyncAt ? new Date(data.lastSyncAt).toLocaleTimeString() : '-';
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch('/api/status', { cache: 'no-store' });
+        if (!res.ok) return;
+        render(await res.json());
+      } catch {
+        els.stateText.textContent = '連線失敗';
+      }
+    }
+
+    els.syncBtn.addEventListener('click', async () => {
+      els.syncBtn.disabled = true;
+      try {
+        await fetch('/api/sync', { method: 'POST', cache: 'no-store' });
+        await refresh();
+      } finally {
+        els.syncBtn.disabled = false;
+      }
+    });
+
+    refresh();
+    setInterval(refresh, 2000);
+  </script>
+</body>
+</html>

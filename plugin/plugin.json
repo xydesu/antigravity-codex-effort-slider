@@ -1,0 +1,11 @@
+{
+  "name": "codex-effort-slider",
+  "displayName": "Codex Effort Slider",
+  "version": "2.0.0",
+  "description": "經由內建 Sidecar 與本機 CDP 熱注入，免修改 app.asar 為 Antigravity 啟用第一層推理等級滑桿與右側第二層模型選擇器。",
+  "suggestedPrompts": [
+    "檢查 Codex Effort Slider Sidecar 與 CDP 熱注入目前狀態",
+    "立即同步更新 Codex Effort Slider payload 並重新注入所有主視窗",
+    "說明如何在停用插件時自動還原 Antigravity 原生模型選擇面板"
+  ]
+}
