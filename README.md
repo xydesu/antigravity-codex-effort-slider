@@ -11,9 +11,9 @@
 
 ![雙層模型選單與 Reasoning Effort 滑桿](docs/screenshots/dual-layer-overview.png)
 
-**推理等級能量漸層（Low → Extra）與設定面板**
+**推理等級能量漸層（Low → Extra）**
 
-![推理等級能量漸層與滑條設定面板](docs/screenshots/effort-levels-and-settings.png)
+![推理等級能量漸層](docs/screenshots/effort-levels.png)
 
 **Aux Pane Sidecar 狀態與滑條設定面板**
 
