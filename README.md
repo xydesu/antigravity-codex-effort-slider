@@ -5,16 +5,30 @@
 
 為 Antigravity Desktop 模型選擇器提供 Codex 風格的 **Reasoning Effort** 連續滑桿與雙層模型選單，透過 Antigravity 原生 **Sidecar + CDP** 外掛架構運作。
 
+## 介面預覽
+
+**雙層模型選單與 Reasoning Effort 滑桿**
+
+![雙層模型選單與 Reasoning Effort 滑桿](docs/screenshots/dual-layer-overview.png)
+
+**推理等級能量漸層（Low → Extra）與設定面板**
+
+![推理等級能量漸層與滑條設定面板](docs/screenshots/effort-levels-and-settings.png)
+
+**Aux Pane Sidecar 狀態與滑條設定面板**
+
+<img src="docs/screenshots/aux-pane-status.png" alt="Aux Pane Sidecar 狀態與滑條設定面板" width="480" />
+
 ## 功能特色
 
 - **雙層模型與推理等級切換**
   - **第一層（主彈窗）**：點擊底部模型按鈕後，顯示目前模型入口列（`Select Model ›`）與即時 **Reasoning Effort** 物理滑條；若選用單一檔位模型，滑條區塊會自動隱藏並保留切換入口。
   - **第二層（右側模型清單）**：滑鼠懸停或點擊 `Select Model ›` 時，於主彈窗右側展開完整模型列表，並顯示各模型的標籤膠囊、模型說明及配額重置／耗盡懸停提示（`Tooltip`）。
 - **物理手感與粒子視覺回饋**
-  - 指標拖曳採 1:1 即時跟手追蹤，於放開（`pointerup`）或鍵盤操作定格時平滑吸附至目標刻度並同步套用設定；支援右鍵、長按滑條 600ms 或 `Shift+F10` 開啟設定面板，切換運動曲線（`full` / `quick` / `fast`）與已過刻度顯示方式（`hidden` / `dim`）。
+  - 指標拖曳採 1:1 即時跟手追蹤，於放開（`pointerup`）或鍵盤操作定格時平滑吸附至目標刻度並同步套用設定；支援點擊標題列齒輪圖示、右鍵、長按滑條 600ms、`Shift+F10`，或直接於 Aux Pane 面板調整運動曲線（`full` / `quick` / `fast`）與已過刻度顯示方式（`hidden` / `dim` / `highlight`）。
   - 內建 22 顆黃金比例星點粒子與漸層能量光暈，隨推理等級動態調整速率，完整支援淺／深色主題與 `prefers-reduced-motion`。
 - **原生外掛整合**
-  - Sidecar 透過本機 `DevToolsActivePort` 自動連線主聊天視窗並監測版本變更進行熱更新，並於 Antigravity Aux Pane 提供連線狀態與手動同步按鈕；處於 Best-of-N 模式、清單載入中或停用外掛時皆會保持或還原原生介面。
+  - Sidecar 透過本機 `DevToolsActivePort` 自動連線主聊天視窗並監測版本變更進行熱更新，並於 Antigravity Aux Pane 提供連線狀態、手動同步按鈕與滑條設定同步；處於 Best-of-N 模式、清單載入中或停用外掛時皆會保持或還原原生介面。
 
 ## 安裝與啟用
 
@@ -37,6 +51,8 @@ npm run install:plugin
 
 ```text
 .
+├── docs/
+│   └── screenshots/                   # README 介面預覽截圖
 ├── src/
 │   └── antigravity-effort-slider.js   # 前端雙層介面、物理引擎與模型選擇器連動核心
 ├── plugin/                            # Antigravity 外掛套件
