@@ -566,6 +566,70 @@ section("8. React Fiber LQc/XQc Context, Layer-2 Right Model Switch & Smooth Rel
   eq(envTip.doc.body.querySelector('[data-ces-part="model-submenu"]'), null, "[8] dispose() removes layer-2 submenu from doc.body");
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+ * 9. Settings Panel Triggers (Gear Button, ContextMenu, Long-Press, Shift+F10)
+ * ══════════════════════════════════════════════════════════════════════ */
+{
+  console.log("\n[9. Settings Panel Triggers & Base UI Isolation]");
+  const envSet = createTestEnv();
+  const agSet = createAntigravityDom(envSet, { withFiber: true, activeEffort: "medium" });
+  const ctrlSet = S.createController({ doc: envSet.doc, win: envSet.win });
+  ctrlSet.start();
+
+  const track = envSet.doc.querySelector('[data-ces-part="track"]');
+  const settingsBtn = envSet.doc.querySelector('[data-ces-part="settings-trigger"]');
+  ok(settingsBtn !== null, "[9] settings gear trigger exists in slider header");
+
+  if (settingsBtn) {
+    // 1) Click gear button opens settings panel and keeps focus inside host panel (not stealing focus to doc.body)
+    track.focus();
+    settingsBtn.click();
+    const setPanel = envSet.doc.body.querySelector(".ces-set");
+    ok(setPanel !== null && setPanel.style.display === "block", "[9] clicking settings gear opens settings panel");
+    ok(agSet.panel.parentNode === envSet.doc.body, "[9] main selector panel remains open after opening settings");
+    ok(envSet.doc.activeElement === track || agSet.panel.contains(envSet.doc.activeElement), "[9] opening settings via click keeps focus inside main panel");
+
+    // Window capture guard protects settings panel pointerdown/mousedown/focusin from Base UI outside-click dismissal
+    let winReceived = false;
+    const winListener = () => { winReceived = true; };
+    envSet.win.addEventListener("pointerdown", winListener, false);
+    const radio = setPanel.querySelector('input[value="fast"]');
+    radio.dispatchEvent(new FakeEvent("pointerdown", { bubbles: true }));
+    envSet.win.removeEventListener("pointerdown", winListener, false);
+    eq(winReceived, false, "[9] pointerdown inside settings panel is shielded from window outside-click guard");
+
+    // Toggle closed via gear button
+    settingsBtn.click();
+    eq(setPanel.style.display, "none", "[9] clicking settings gear again closes settings panel");
+  }
+
+  // 2) Right-click (contextmenu) on track opens settings panel without closing main panel
+  track.focus();
+  track.dispatchEvent(new FakeEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 50, clientY: 12 }));
+  const setByCtx = envSet.doc.body.querySelector(".ces-set");
+  ok(setByCtx !== null && setByCtx.style.display === "block", "[9] contextmenu on track opens settings panel");
+  ok(envSet.doc.activeElement === track || agSet.panel.contains(envSet.doc.activeElement), "[9] contextmenu keeps focus inside main panel");
+  envSet.doc.dispatchEvent(new FakeEvent("keydown", { key: "Escape", bubbles: true }));
+
+  // 3) Long-press 600ms on track opens settings and cancels active drag so pointerup does not commit
+  const callsBefore = agSet.fiberCalls.length;
+  track.dispatchEvent(new FakeEvent("pointerdown", { button: 0, clientX: 190, clientY: 12, pointerId: 1, bubbles: true }));
+  await new Promise((r) => setTimeout(r, 640));
+  const setByHold = envSet.doc.body.querySelector(".ces-set");
+  ok(setByHold !== null && setByHold.style.display === "block", "[9] long-press 600ms opens settings panel");
+  envSet.doc.dispatchEvent(new FakeEvent("pointerup", { button: 0, clientX: 190, clientY: 12, pointerId: 1, bubbles: true }));
+  eq(agSet.fiberCalls.length, callsBefore, "[9] long-press cancels drag so release does not commit effort change");
+  envSet.doc.dispatchEvent(new FakeEvent("keydown", { key: "Escape", bubbles: true }));
+
+  // 4) Shift+F10 when track is focused opens settings panel
+  track.focus();
+  envSet.doc.dispatchEvent(new FakeEvent("keydown", { key: "F10", shiftKey: true, bubbles: true }));
+  const setByKey = envSet.doc.body.querySelector(".ces-set");
+  ok(setByKey !== null && setByKey.style.display === "block", "[9] Shift+F10 when track focused opens settings panel");
+
+  ctrlSet.dispose();
+}
+
 /* ══════════════════════════════════════════════════════════════════════ */
 
 console.log(`\nSummary: ${passed} passed, ${failed} failed`);

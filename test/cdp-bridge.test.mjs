@@ -18,8 +18,11 @@ const {
   findActiveDevToolsPort,
   isAntigravityMainPageTarget,
   listMainWindowTargets,
+  normalizeSliderSettings,
   parseDevToolsPortFile,
   resolveDevToolsPortCandidates,
+  SLIDER_SETTINGS_EVENT,
+  SLIDER_SETTINGS_KEY,
 } = await import("../plugin/sidecars/effort-slider/cdp-bridge.mjs");
 
 const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -47,9 +50,25 @@ function eq(actual, expected, label) {
 }
 
 function createFakeCdpTargetVm() {
+  const store = new Map();
+  const dispatched = [];
   const ctx = {
     window: null,
     disposeCalls: 0,
+    dispatched,
+    localStorage: {
+      getItem: (k) => (store.has(k) ? store.get(k) : null),
+      setItem: (k, v) => store.set(k, String(v)),
+    },
+    CustomEvent: class CustomEvent {
+      constructor(type) {
+        this.type = type;
+      }
+    },
+    dispatchEvent: (ev) => {
+      dispatched.push(ev?.type);
+      return true;
+    },
     Boolean,
     String,
     JSON,
@@ -247,6 +266,34 @@ try {
     computeBundleVersion(currentPayload),
     "target VM updated to new bundleVersion",
   );
+
+  // Sidecar settings normalization, persistence and CDP broadcast
+  const norm = normalizeSliderSettings({ motion: "invalid", reachedTicks: "dim" });
+  eq(norm.motion, "full", "normalizeSliderSettings rejects invalid motion");
+  eq(norm.reachedTicks, "dim", "normalizeSliderSettings keeps valid reachedTicks");
+
+  const settingsFile = path.join(TMP_DIR, "slider-settings.json");
+  const ctrlSettings = createCdpBridgeController({
+    env: { ANTIGRAVITY_DEVTOOLS_PORT_FILE: PORT_FILE },
+    WebSocketImpl: MockWS,
+    readPayload: () => currentPayload,
+    settingsPath: settingsFile,
+  });
+  const upd = await ctrlSettings.updateSettings({ motion: "fast", reachedTicks: "highlight" });
+  eq(upd.ok, true, "updateSettings() returns ok=true");
+  eq(upd.applied, 1, "updateSettings() applies to 1 target window via CDP");
+  eq(upd.settings.motion, "fast", "updateSettings() sets motion=fast");
+  eq(upd.settings.reachedTicks, "highlight", "updateSettings() sets reachedTicks=highlight");
+  ok(fs.existsSync(settingsFile), "updateSettings() persists settings file");
+
+  const vmTarget = targetVms.get(mainWsUrl);
+  const storedRaw = vmTarget.localStorage.getItem(SLIDER_SETTINGS_KEY);
+  eq(JSON.parse(storedRaw).motion, "fast", "target VM localStorage updated with motion=fast");
+  ok(vmTarget.dispatched.includes(SLIDER_SETTINGS_EVENT), "target VM received settings broadcast event");
+
+  const resetRes = await ctrlSettings.updateSettings({ reset: true });
+  eq(resetRes.settings.motion, "full", "updateSettings({ reset: true }) restores default motion");
+  eq(resetRes.settings.reachedTicks, "hidden", "updateSettings({ reset: true }) restores default reachedTicks");
 
   // Stop with disposeWindows: true -> disposes & restores target window
   const stopRes = await ctrl.stop({ disposeWindows: true });

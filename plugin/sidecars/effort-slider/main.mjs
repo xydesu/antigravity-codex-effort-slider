@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Response, SidecarApp } from 'sidecar_sdk';
@@ -52,8 +53,13 @@ export function isLocalHostRequest(req) {
 }
 
 const app = new SidecarApp();
+const SETTINGS_PATH = join(
+  process.env.AGY_PLUGIN_DIR || join(homedir(), '.gemini', 'config', 'plugins', 'codex-effort-slider'),
+  'slider-settings.json'
+);
 const controller = createCdpBridgeController({
   payloadPath: join(HERE, 'payload.js'),
+  settingsPath: SETTINGS_PATH,
 });
 
 app.page('/', async () => {
@@ -105,6 +111,51 @@ app.api(
         headers: NO_STORE_HEADERS,
       }
     );
+  },
+  'POST'
+);
+
+app.api(
+  '/api/settings',
+  (_data, req) => {
+    if (!isLocalHostRequest(req)) {
+      return new Response(JSON.stringify({ error: 'Forbidden host or origin' }), {
+        status: 403,
+        contentType: 'application/json',
+        headers: NO_STORE_HEADERS,
+      });
+    }
+    return new Response(JSON.stringify({ settings: controller.getSettings() }), {
+      status: 200,
+      contentType: 'application/json',
+      headers: NO_STORE_HEADERS,
+    });
+  },
+  'GET'
+);
+
+app.api(
+  '/api/settings',
+  async (data, req) => {
+    if (!isLocalHostRequest(req)) {
+      return new Response(JSON.stringify({ error: 'Forbidden host or origin' }), {
+        status: 403,
+        contentType: 'application/json',
+        headers: NO_STORE_HEADERS,
+      });
+    }
+    let patch = {};
+    try {
+      patch = typeof data === 'string' ? JSON.parse(data || '{}') : (data && typeof data === 'object' ? data : {});
+    } catch {
+      patch = {};
+    }
+    const result = await controller.updateSettings(patch);
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      contentType: 'application/json',
+      headers: NO_STORE_HEADERS,
+    });
   },
   'POST'
 );
