@@ -91,6 +91,10 @@ npm test
 
 若本機外掛正在運行，Sidecar 會每隔 1.2 秒自動比對 `payload.js` 的 SHA-256，偵測更新後自動重新注入並釋放舊實例。
 
+## 靈感來源
+
+- [Microqian2th/dsh-codex-effort-slider](https://github.com/Microqian2th/dsh-codex-effort-slider)：本專案的滑桿視覺設計與物理手感靈感源自於此專案。
+
 ## 授權
 
 [MIT](LICENSE)
