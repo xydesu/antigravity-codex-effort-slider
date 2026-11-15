@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -7,6 +7,36 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_PAYLOAD_PATH = join(__dirname, 'payload.js');
+export const SLIDER_SETTINGS_KEY = 'ag-codex-effort-slider.settings';
+export const SLIDER_SETTINGS_EVENT = 'ag-codex-effort-slider:settings';
+export const DEFAULT_SLIDER_SETTINGS = Object.freeze({
+  v: 1,
+  motion: 'full',
+  reachedTicks: 'hidden',
+});
+const VALID_MOTIONS = new Set(['fast', 'quick', 'full']);
+const VALID_REACHED_TICKS = new Set(['highlight', 'dim', 'hidden']);
+
+/**
+ * 正規化滑條設定，僅允許合法的動畫模式與刻度點顯示選項。
+ *
+ * @param {unknown} raw
+ * @param {object} [base]
+ * @returns {{ v: number, motion: 'fast'|'quick'|'full', reachedTicks: 'highlight'|'dim'|'hidden' }}
+ */
+export function normalizeSliderSettings(raw, base = DEFAULT_SLIDER_SETTINGS) {
+  const fallback = base && typeof base === 'object' ? base : DEFAULT_SLIDER_SETTINGS;
+  const out = {
+    v: 1,
+    motion: VALID_MOTIONS.has(fallback.motion) ? fallback.motion : 'full',
+    reachedTicks: VALID_REACHED_TICKS.has(fallback.reachedTicks) ? fallback.reachedTicks : 'hidden',
+  };
+  if (raw && typeof raw === 'object') {
+    if (VALID_MOTIONS.has(raw.motion)) out.motion = raw.motion;
+    if (VALID_REACHED_TICKS.has(raw.reachedTicks)) out.reachedTicks = raw.reachedTicks;
+  }
+  return out;
+}
 
 const MAIN_PAGE_URL_RE = /^https:\/\/(127\.0\.0\.1|localhost|\[::1\]):\d+(?:\/|$)/i;
 const LOOPBACK_WS_RE = /^ws:\/\/(127\.0\.0\.1|localhost|\[::1\]):\d+\//i;
@@ -258,6 +288,8 @@ export function createCdpBridgeController(options = {}) {
     WebSocketImpl,
     httpModule = http,
     payloadPath = DEFAULT_PAYLOAD_PATH,
+    settingsPath = null,
+    initialSettings = null,
     readPayload = () => readFileSync(payloadPath, 'utf8'),
     getBundleVersion,
     bundleVersion: fixedBundleVersion,
@@ -271,6 +303,20 @@ export function createCdpBridgeController(options = {}) {
   let initialTimer = null;
   let pollTimer = null;
   let activeSyncPromise = null;
+  let hasPersistedSettings = Boolean(initialSettings);
+  let currentSettings = normalizeSliderSettings(initialSettings);
+
+  if (settingsPath) {
+    try {
+      if (existsSync(settingsPath)) {
+        const saved = JSON.parse(readFileSync(settingsPath, 'utf8'));
+        currentSettings = normalizeSliderSettings(saved, currentSettings);
+        hasPersistedSettings = true;
+      }
+    } catch {
+      // 忽略損毀設定檔並沿用預設值
+    }
+  }
 
   const status = {
     running: false,
@@ -364,12 +410,17 @@ export function createCdpBridgeController(options = {}) {
       }
     })()`;
 
+    const settingsSeedExpr = hasPersistedSettings
+      ? `try { localStorage.setItem(${JSON.stringify(SLIDER_SETTINGS_KEY)}, ${JSON.stringify(JSON.stringify(currentSettings))}); } catch {}`
+      : '';
+
     const injectExpr = `(() => {
       try { window.__agCodexEffortSlider?.dispose?.(); } catch {}
       try {
         delete window.__agCodexEffortSliderLoaded;
         delete window.__agCodexEffortSlider;
       } catch {}
+      ${settingsSeedExpr}
       window.__agCodexEffortSliderConfig = ${JSON.stringify({ bundleVersion })};
       ${payloadSource}
       return {
@@ -537,10 +588,65 @@ export function createCdpBridgeController(options = {}) {
     return { stopped: true, disposed };
   }
 
+  async function updateSettings(patch = {}) {
+    const base = patch && patch.reset ? DEFAULT_SLIDER_SETTINGS : currentSettings;
+    currentSettings = normalizeSliderSettings(patch && patch.reset ? null : patch, base);
+    hasPersistedSettings = true;
+
+    if (settingsPath) {
+      try {
+        mkdirSync(dirname(settingsPath), { recursive: true });
+        writeFileSync(settingsPath, `${JSON.stringify(currentSettings, null, 2)}\n`, 'utf8');
+      } catch {
+        // 磁碟無法寫入時仍繼續透過 CDP 即時套用
+      }
+    }
+
+    let applied = 0;
+    let targetsCount = 0;
+    const cdpPort = findActiveDevToolsPort({ env, platform, homeDir });
+    if (cdpPort) {
+      const targets = await listMainWindowTargets(cdpPort, {
+        httpModule,
+        timeoutMs: cdpTimeoutMs,
+      }).catch(() => []);
+      targetsCount = targets.length;
+      const applyExpr = `(() => {
+        try {
+          localStorage.setItem(${JSON.stringify(SLIDER_SETTINGS_KEY)}, ${JSON.stringify(JSON.stringify(currentSettings))});
+          window.dispatchEvent(new CustomEvent(${JSON.stringify(SLIDER_SETTINGS_EVENT)}));
+          return true;
+        } catch {
+          return false;
+        }
+      })()`;
+      for (const target of targets) {
+        try {
+          const res = await evaluateOnTarget(target.webSocketDebuggerUrl, applyExpr, {
+            WebSocketImpl,
+            timeoutMs: cdpTimeoutMs,
+          });
+          if (res?.result?.result?.value === true) applied += 1;
+        } catch {
+          // 單一視窗失敗不影響其餘目標
+        }
+      }
+    }
+
+    return {
+      ok: true,
+      settings: { ...currentSettings },
+      applied,
+      targets: targetsCount,
+    };
+  }
+
   return {
     syncAllWindows,
     start,
     stop,
+    getSettings: () => ({ ...currentSettings }),
+    updateSettings,
     getStatus: () => ({ ...status, running, stopped }),
   };
 }

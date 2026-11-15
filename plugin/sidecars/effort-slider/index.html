@@ -32,6 +32,38 @@
       border-radius: 10px;
       padding: 14px 16px;
     }
+    .card + .card {
+      margin-top: 12px;
+    }
+    .section-title {
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .setting-group {
+      margin-bottom: 10px;
+    }
+    .setting-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .radio-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+    }
+    .radio-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--border);
+    }
     .header {
       display: flex;
       align-items: center;
@@ -115,6 +147,29 @@
       <button id="sync-btn" type="button">立即同步</button>
     </div>
   </div>
+  <div class="card">
+    <h2 class="section-title">滑條設定</h2>
+    <div class="setting-group">
+      <div class="setting-label">動畫效果（不受系統「減少動態效果」影響）</div>
+      <div class="radio-row" role="radiogroup" aria-label="動畫效果">
+        <label><input type="radio" name="motion" value="fast"> 快速動畫</label>
+        <label><input type="radio" name="motion" value="quick"> 簡潔動畫</label>
+        <label><input type="radio" name="motion" value="full" checked> 完整動畫</label>
+      </div>
+    </div>
+    <div class="setting-group">
+      <div class="setting-label">已到達檔位的刻度點</div>
+      <div class="radio-row" role="radiogroup" aria-label="已到達檔位的刻度點">
+        <label><input type="radio" name="reachedTicks" value="highlight"> 亮白顯示</label>
+        <label><input type="radio" name="reachedTicks" value="dim"> 與未到達同色</label>
+        <label><input type="radio" name="reachedTicks" value="hidden" checked> 隱藏</label>
+      </div>
+    </div>
+    <div class="actions">
+      <span id="settings-hint" class="hint">變更後即時套用至主視窗</span>
+      <button id="reset-btn" class="secondary" type="button">恢復預設</button>
+    </div>
+  </div>
   <script>
     const els = {
       dot: document.getElementById('dot'),
@@ -125,7 +180,50 @@
       version: document.getElementById('version'),
       syncAt: document.getElementById('sync-at'),
       syncBtn: document.getElementById('sync-btn'),
+      settingsHint: document.getElementById('settings-hint'),
+      resetBtn: document.getElementById('reset-btn'),
     };
+
+    function renderSettings(settings) {
+      if (!settings) return;
+      for (const key of ['motion', 'reachedTicks']) {
+        const inputs = document.querySelectorAll(`input[name="${key}"]`);
+        for (const input of inputs) {
+          input.checked = input.value === settings[key];
+        }
+      }
+    }
+
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/settings', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        renderSettings(data?.settings);
+      } catch {
+        // 忽略離線載入錯誤
+      }
+    }
+
+    async function saveSettings(patch) {
+      try {
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify(patch),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        renderSettings(data?.settings);
+        const applied = Number(data?.applied || 0);
+        els.settingsHint.textContent = applied > 0
+          ? `已儲存並套用至 ${applied} 個主視窗`
+          : '已儲存（開啟主視窗後將自動套用）';
+      } catch {
+        els.settingsHint.textContent = '儲存失敗';
+      }
+    }
 
     function render(data) {
       const alive = Number(data?.aliveCount || 0);
@@ -160,7 +258,20 @@
       }
     });
 
+    for (const key of ['motion', 'reachedTicks']) {
+      for (const input of document.querySelectorAll(`input[name="${key}"]`)) {
+        input.addEventListener('change', () => {
+          if (input.checked) saveSettings({ [key]: input.value });
+        });
+      }
+    }
+
+    els.resetBtn.addEventListener('click', () => {
+      saveSettings({ reset: true });
+    });
+
     refresh();
+    loadSettings();
     setInterval(refresh, 2000);
   </script>
 </body>

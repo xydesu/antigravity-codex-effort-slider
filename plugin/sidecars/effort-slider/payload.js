@@ -155,7 +155,10 @@
     ".ces-ag-slider-section{margin-top:4px;padding:8px 8px 6px;border-top:1px solid var(--border,rgba(127,127,127,.22));border-radius:8px;transition:box-shadow .2s ease}",
     ".ces-ag-host{padding:6px 8px 8px;margin-bottom:4px;min-width:216px;border-radius:8px;border-bottom:1px solid var(--border,rgba(127,127,127,.22));transition:box-shadow .2s ease}",
     ".ces-ag-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;font-size:12px;line-height:16px;user-select:none}",
+    ".ces-ag-head-left{display:inline-flex;align-items:center;gap:4px;min-width:0}",
     ".ces-ag-label{color:var(--muted-foreground,rgba(127,127,127,.85));font-weight:500}",
+    ".ces-ag-settings-btn{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:0;border-radius:4px;background:transparent;color:var(--muted-foreground,rgba(127,127,127,.85));opacity:.62;cursor:pointer;transition:opacity .12s ease,background-color .12s ease,color .12s ease}",
+    ".ces-ag-settings-btn:hover,.ces-ag-settings-btn[aria-expanded='true']{opacity:1;background:var(--secondary,rgba(127,127,127,.16));color:var(--foreground,inherit)}",
     ".ces-ag-value{font-weight:600;transition:color .12s ease}",
     ".ces-inline[data-dragging='1'] .ces-ag-value,.ces-inline[data-dragging='1'] .ces-ag-slider-section,.ces-inline[data-dragging='1'] .ces-energy,.ces-inline[data-dragging='1'] .ces-stars{transition:none}",
     ".ces-track{position:relative;box-sizing:border-box;height:" + TRACK_HEIGHT + "px;margin-top:2px;border-radius:999px;background:var(--border,rgba(15,17,21,.10));cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}",
@@ -1581,9 +1584,9 @@
       var panel = settingsUi.panel;
       if (!panel || panel.style.display === "none") return;
       panel.style.display = "none";
-      try {
-        if (settingsUi.anchorEl && typeof settingsUi.anchorEl.focus === "function") settingsUi.anchorEl.focus();
-      } catch (e) { /* 忽略 */ }
+      if (hostState && hostState.settingsBtn) {
+        hostState.settingsBtn.setAttribute("aria-expanded", "false");
+      }
     }
 
     function syncSettingsPanel() {
@@ -1691,7 +1694,9 @@
       var maxY = ((win && win.innerHeight) || 768) - height - 8;
       panel.style.left = Math.max(8, Math.min(x, maxX)) + "px";
       panel.style.top = Math.max(8, Math.min(y, maxY)) + "px";
-      try { panel.focus(); } catch (e) { /* 忽略 */ }
+      if (hostState && hostState.settingsBtn) {
+        hostState.settingsBtn.setAttribute("aria-expanded", "true");
+      }
     }
 
     /* ── 提交寫回 (優先使用 React Fiber setSelectedModel，無 Fiber 時退回 DOM 點擊) ── */
@@ -2113,13 +2118,34 @@
 
       var head = doc.createElement("div");
       head.className = "ces-ag-head";
+      var headLeft = doc.createElement("span");
+      headLeft.className = "ces-ag-head-left";
       var labelEl = doc.createElement("span");
       labelEl.className = "ces-ag-label";
       labelEl.textContent = "Reasoning effort";
+      var settingsBtn = doc.createElement("button");
+      settingsBtn.type = "button";
+      settingsBtn.className = "ces-ag-settings-btn";
+      settingsBtn.setAttribute("data-ces-part", "settings-trigger");
+      settingsBtn.setAttribute("aria-label", "滑條設定");
+      settingsBtn.setAttribute("aria-expanded", "false");
+      settingsBtn.setAttribute("title", "滑條設定（或於滑條按右鍵）");
+      settingsBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="2.3"/><path d="M13.2 9.9a1.1 1.1 0 0 0 .22 1.21l.04.04a1.33 1.33 0 1 1-1.88 1.88l-.04-.04a1.1 1.1 0 0 0-1.86.78v.11a1.33 1.33 0 1 1-2.66 0v-.06a1.1 1.1 0 0 0-.72-1 1.1 1.1 0 0 0-1.21.22l-.04.04a1.33 1.33 0 1 1-1.88-1.88l.04-.04a1.1 1.1 0 0 0-.78-1.86h-.11a1.33 1.33 0 1 1 0-2.66h.06a1.1 1.1 0 0 0 1-.72 1.1 1.1 0 0 0-.22-1.21l-.04-.04a1.33 1.33 0 1 1 1.88-1.88l.04.04a1.1 1.1 0 0 0 1.86-.78v-.11a1.33 1.33 0 1 1 2.66 0v.06a1.1 1.1 0 0 0 1 .72 1.1 1.1 0 0 0 1.21-.22l.04-.04a1.33 1.33 0 1 1 1.88 1.88l-.04.04a1.1 1.1 0 0 0 .78 1.86h.11a1.33 1.33 0 1 1 0 2.66h-.06a1.1 1.1 0 0 0-.72 1z"/></svg>';
+      settingsBtn.addEventListener("click", function (ev) {
+        swallow(ev);
+        if (typeof ev.preventDefault === "function") ev.preventDefault();
+        if (settingsUi.panel && settingsUi.panel.style.display !== "none") {
+          closeSettingsPanel();
+        } else {
+          openSettingsPanel(sliderSection.getBoundingClientRect(), sliderSection);
+        }
+      });
+      headLeft.appendChild(labelEl);
+      headLeft.appendChild(settingsBtn);
       var headValueEl = doc.createElement("span");
       headValueEl.className = "ces-ag-value";
       headValueEl.setAttribute("data-ces-part", "value");
-      head.appendChild(labelEl);
+      head.appendChild(headLeft);
       head.appendChild(headValueEl);
 
       var trackEl = doc.createElement("div");
@@ -2280,6 +2306,7 @@
         modelTriggerBtn: modelTriggerBtn,
         triggerCurrentEl: triggerCurrentEl,
         sliderSection: sliderSection,
+        settingsBtn: settingsBtn,
         headValueEl: headValueEl,
         trackEl: trackEl,
         fillEl: fillEl,
@@ -2695,13 +2722,19 @@
     }
 
     function onWinSubmenuGuard(ev) {
-      if (!submenuOpen || !submenuEl || !ev || !ev.target) return;
-      if (typeof submenuEl.contains === "function" && submenuEl.contains(ev.target)) {
+      if (!ev || !ev.target) return;
+      if (submenuOpen && submenuEl && typeof submenuEl.contains === "function" && submenuEl.contains(ev.target)) {
         // 阻止 Base UI Popover 將右側第二層浮動選單的按下事件誤判為外部點擊而關閉主面板
         swallow(ev);
         if ((ev.type === "pointerdown" || ev.type === "mousedown") && typeof ev.preventDefault === "function") {
           ev.preventDefault();
         }
+        return;
+      }
+      if (settingsUi.panel && settingsUi.panel.style.display !== "none" &&
+          typeof settingsUi.panel.contains === "function" && settingsUi.panel.contains(ev.target)) {
+        // 保護掛載於 body 的設定彈窗，避免 Base UI 誤判外部點擊而關閉主選單（不阻擋表單預設行為）
+        swallow(ev);
       }
     }
 
@@ -2720,6 +2753,16 @@
       settingsUi.longPressOrigin = { x: ev.clientX || 0, y: ev.clientY || 0 };
       settingsUi.longPressTimer = setTimeout(function () {
         settingsUi.longPressTimer = null;
+        if (dragging) {
+          dragging = false;
+          buttonDown = false;
+          draft = null;
+          lastCommittedId = null;
+          if (hostState && hostState.container) {
+            hostState.container.setAttribute("data-dragging", "0");
+          }
+          renderSlider();
+        }
         openSettingsPanel(anchor.getBoundingClientRect(), anchor);
       }, 600);
     }
@@ -2776,6 +2819,7 @@
       var panel = settingsUi.panel;
       if (!panel || panel.style.display === "none") return;
       if (panel.contains(ev.target)) return;
+      if (ev.target && typeof ev.target.closest === "function" && ev.target.closest('[data-ces-part="settings-trigger"]')) return;
       if (isInsideSlider(ev.target)) return;
       closeSettingsPanel();
     }
